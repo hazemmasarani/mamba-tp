@@ -16,6 +16,8 @@
 import math
 from dataclasses import dataclass
 
+import time
+
 import torch
 from torch import nn
 from torch.nn import CrossEntropyLoss
@@ -32,7 +34,7 @@ from transformers.modeling_utils import PreTrainedModel
 from transformers.utils import (
     ModelOutput,
     auto_docstring,
-    logging,
+    # logging,
 )
 from transformers.utils.import_utils import (
     is_mambapy_available,
@@ -43,7 +45,22 @@ from transformers.utils.import_utils import (
 
 from transformers.models.mamba.configuration_mamba import MambaConfig
 
-logger = logging.get_logger(__name__)
+
+import logging
+# Create log directory
+log_file = "log/tp.log"
+
+# Configure logging
+logging.basicConfig(
+    level=logging.INFO,               # capture INFO and above
+    format="%(message)s",
+    handlers=[
+        logging.FileHandler(log_file),  # write to file
+        logging.StreamHandler()         # also print to console
+    ]
+)
+
+# logger = logging.get_logger(__name__)
 
 associative_scan = None
 
@@ -532,6 +549,7 @@ class MambaModel(MambaPreTrainedModel):
         output_hidden_states: bool | None = None,
         return_dict: bool | None = None,
         attention_mask: torch.LongTensor | None = None,
+        counter: int = None,
         **kwargs,
     ) -> tuple | MambaOutput:
         r"""
@@ -561,6 +579,13 @@ class MambaModel(MambaPreTrainedModel):
             cache_params = MambaCache(
                 self.config, inputs_embeds.size(0), device=inputs_embeds.device, dtype=inputs_embeds.dtype
             )
+        
+        batch_size, seq_len, _ = inputs_embeds.shape
+        
+        dist.barrier()
+        torch.cuda.synchronize()
+
+        start = time.perf_counter() 
 
         hidden_states = inputs_embeds
         all_hidden_states = () if output_hidden_states else None
@@ -578,6 +603,14 @@ class MambaModel(MambaPreTrainedModel):
                 all_hidden_states = all_hidden_states + (hidden_states,)
 
         hidden_states = self.norm_f(hidden_states)
+
+        torch.cuda.synchronize()
+
+        end = time.perf_counter()
+
+        dist.barrier()
+
+        logging.info(f"Gate, {batch_size}, {seq_len}, {self.config.rank}, {counter}, {start}, {end}")
 
         if output_hidden_states:
             all_hidden_states = all_hidden_states + (hidden_states,)
@@ -659,6 +692,7 @@ class MambaForCausalLM(MambaPreTrainedModel, GenerationMixin):
         return_dict: bool | None = None,
         use_cache: bool | None = None,
         logits_to_keep: int | torch.Tensor = 0,
+        counter: int = None,
         **kwargs,  # for now we need this for generation
     ) -> tuple | MambaCausalLMOutput:
         r"""
@@ -682,6 +716,7 @@ class MambaForCausalLM(MambaPreTrainedModel, GenerationMixin):
             return_dict=return_dict,
             use_cache=use_cache,
             attention_mask=attention_mask,
+            counter = counter
         )
 
         hidden_states = mamba_outputs[0]

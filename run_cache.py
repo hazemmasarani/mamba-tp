@@ -75,11 +75,11 @@ def worker(rank, world_size, device_map, num_iter):
     batch_size, seq_len = input_ids.shape
 
     with torch.no_grad():
-        outputs = model(input_ids, return_dict=True, use_cache=True)
+        outputs = model(input_ids, return_dict=True, use_cache=True, counter=0)
         logits = outputs.logits
         cache = outputs.cache_params
         
-        for i in range(num_iter):
+        for i in range(1, num_iter):
             next_token = torch.argmax(
                 logits[:, -1, :],
                 dim=-1,
@@ -95,7 +95,8 @@ def worker(rank, world_size, device_map, num_iter):
                 cache_params=cache,
                 cache_position=cache_position,
                 return_dict=True,
-                use_cache=True
+                use_cache=True,
+                counter = i
             )
 
             logits = outputs.logits
@@ -120,7 +121,7 @@ if __name__ == "__main__":
     process = []
 
     for i in range(world_size):
-        p = mp.Process(target=worker, args=(i, world_size, device_map, 30))
+        p = mp.Process(target=worker, args=(i, world_size, device_map, 513))
         p.start()
         process.append(p)
 
