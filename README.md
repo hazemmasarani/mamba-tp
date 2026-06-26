@@ -29,7 +29,7 @@ This design enables distributed execution while preserving the correctness of th
 Example:
 Mamba-TP Architecture
 
-!\[Mamba-TP Architecture\](assets/mamba_tp_architecture.png)
+![Mamba-TP Architecture](mamba_tp_architecture.png)
 
 ## Features
 
