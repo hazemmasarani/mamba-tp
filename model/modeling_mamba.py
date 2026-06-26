@@ -100,6 +100,7 @@ class MambaCache:
         self.max_batch_size = max_batch_size
         self._dtype = dtype
         self.intermediate_size = config.intermediate_size
+        self.local_intermediate_size = config.local_intermediate_size
         self.ssm_state_size = config.state_size
         self.conv_kernel_size = config.conv_kernel
         self.has_previous_state = False
