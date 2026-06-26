@@ -74,8 +74,6 @@ def worker(rank, world_size, device_map):
 
     batch_size, seq_len = input_ids.shape
 
-
-    print("Starting forward Cycle")
     out = model(input_ids)
 
     if rank == 0:
