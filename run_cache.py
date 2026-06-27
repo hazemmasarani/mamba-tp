@@ -121,7 +121,7 @@ if __name__ == "__main__":
     process = []
 
     for i in range(world_size):
-        p = mp.Process(target=worker, args=(i, world_size, device_map, 513))
+        p = mp.Process(target=worker, args=(i, world_size, device_map, 2))
         p.start()
         process.append(p)
 
